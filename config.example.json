@@ -1,0 +1,35 @@
+{
+  "onebot": {
+    "host": "0.0.0.0",
+    "port": 8080,
+    "path": "/onebot/v11/ws"
+  },
+  "llm": {
+    "base_url": "https://api.deepseek.com/v1",
+    "api_key": "",
+    "model": "deepseek-chat",
+    "temperature": 1.15,
+    "max_tokens": 700
+  },
+  "card": "贝尔娜提塔·冯·瓦立.json",
+  "master_ids": [
+    123456789
+  ],
+  "group": {
+    "at_only": false,
+    "trigger_keywords": ["贝尔", "贝尔娜提塔", "Bernie", "柏妮"],
+    "random_reply_prob": 0.06,
+    "cooldown_seconds": 20,
+    "history_limit": 12,
+    "reply_with_at": false
+  },
+  "private": {
+    "cooldown_seconds": 3,
+    "history_limit": 20
+  },
+  "style": {
+    "max_chars_group": 140,
+    "max_chars_private": 900,
+    "strip_markdown": true
+  }
+}
