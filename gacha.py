@@ -705,8 +705,9 @@ def _avatar(qq: str, size: int = 56) -> Any:
 
 
 def render_luck_board(rows: list[dict[str, Any]], names: dict[str, str] | None = None,
-                      top: int = 10, scope: str = "") -> tuple[bytes | None, str]:
-    """运气 TOP N：名次 + 头像 + 昵称 + 欧气分 + 分布条。无名的不上榜。"""
+                      top: int = 10, scope: str = "",
+                      mode: str = "top") -> tuple[bytes | None, str]:
+    """运气榜。mode="top" 看最欧前 N，mode="bottom" 看最非倒数 N。"""
     if Image is None:
         return None, "没有 Pillow，画不出榜单。"
     names = names or {}
@@ -718,7 +719,10 @@ def render_luck_board(rows: list[dict[str, Any]], names: dict[str, str] | None =
         r = dict(r)
         r["who"] = _clean_name(who)
         picks.append(r)
-    picks.sort(key=lambda r: (-r["luck"], -r["n"], r["qq"]))
+    if mode == "bottom":
+        picks.sort(key=lambda r: (r["luck"], -r["n"], r["qq"]))
+    else:
+        picks.sort(key=lambda r: (-r["luck"], -r["n"], r["qq"]))
     picks = picks[: max(1, top)]
     if not picks:
         return None, "本群还没人有昵称的卡，先发「抽卡」吧。"
@@ -744,10 +748,18 @@ def render_luck_board(rows: list[dict[str, Any]], names: dict[str, str] | None =
 
     img = F._panel(img, (M, 22, W - M, 22 + top_h), 28)
     d = ImageDraw.Draw(img)
-    d.text((M + 26, 40), f"欧气榜 · {scope or '全服'} · 同抽数看稀有度 · 无名不计", font=f_label, fill=F.SUB)
-    d.text((M + 26, 62), f"运气 TOP {len(picks)}", font=f_title, fill=F.TEXT)
+    if mode == "bottom":
+        head_sub = f"非榜 · {scope or '全服'} · 同抽数看稀有度 · 无名不计"
+        head_title = f"最非 {len(picks)} 人"
+        head_foot = "分数越低越非"
+    else:
+        head_sub = f"欧榜 · {scope or '全服'} · 同抽数看稀有度 · 无名不计"
+        head_title = f"最欧 {len(picks)} 人"
+        head_foot = "100 = 全是 UR，0 = 全是 N"
+    d.text((M + 26, 40), head_sub, font=f_label, fill=F.SUB)
+    d.text((M + 26, 62), head_title, font=f_title, fill=F.TEXT)
     d.text((W - M - 26, 44), f"{len(picks)} 人 · 共 {total_pulls} 抽", font=f_sub, fill=F.SOFT, anchor="ra")
-    d.text((W - M - 26, 66), "100 = 全是 UR，0 = 全是 N", font=f_tiny, fill=F.SOFT, anchor="ra")
+    d.text((W - M - 26, 66), head_foot, font=f_tiny, fill=F.SOFT, anchor="ra")
     d.line([(M + 26, 104), (W - M - 26, 104)], fill=F.FILL, width=1)
 
     y = 22 + top_h + 14
@@ -788,7 +800,9 @@ def render_luck_board(rows: list[dict[str, Any]], names: dict[str, str] | None =
         y += row_h + 10
 
     d.line([(M, H - 44), (W - M, H - 44)], fill=F.LINE, width=1)
-    d.text((M, H - 32), "贝尔娜提塔统计的 · 无名不计", font=f_tiny, fill=F.SOFT)
+    d.text((M, H - 32),
+           "贝尔娜提塔统计的 · 最非" if mode == "bottom" else "贝尔娜提塔统计的 · 最欧",
+           font=f_tiny, fill=F.SOFT)
     d.text((W - M, H - 32), F.beijing_stamp() + " 北京时间", font=f_tiny, fill=F.SOFT, anchor="ra")
 
     buf = io.BytesIO()

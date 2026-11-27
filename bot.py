@@ -1412,7 +1412,7 @@ FORTUNE_REROLL_RE = re.compile(r"^/?重新抽签\s*$", re.I)   # 每人每天一
 GACHA_RE = re.compile(r"^/?抽卡\s*$", re.I)   # 曲绘抽卡，每人每天 3 次
 BAG_RE = re.compile(r"^/?卡包\s*(\d+)?\s*$", re.I)    # 自己的收藏
 POOL_RE = re.compile(r"^/?卡池\s*([A-Za-z]+)?\s*(\d+)?\s*$", re.I)   # 卡池 [等级] [页数]
-LUCK_RE = re.compile(r"^/?欧非榜\s*$", re.I)   # 谁最欧谁最非
+LUCK_RE = re.compile(r"^/?([欧非]榜|欧非榜)\s*$", re.I)   # 欧榜 / 非榜（欧非榜 = 欧榜）
 MEMBERS_MD_RE = re.compile(r"^/?群名单\s*$", re.I)   # 手写/刷新 群成员.md
 RANDOM_SONG_RE = re.compile(r"^/随一首\s*(\S*)\s*$", re.I)
 DS_TABLE_RE = re.compile(r"^/定数表\s*(\S*)(?:\s+(\d+))?\s*$", re.I)
@@ -1429,7 +1429,7 @@ FREE_CMDS = (X8_RE, ADD_X8_RE, X8_RANK_RE, X8_LIKE_RANK_RE, PJSK_RE, FORTUNE_RE,
 
 
 def is_free_cmd(text: str) -> bool:
-    """这条消息是不是免 @ 指令（西八四连 / 烧烤 / 运势 / 重抽 / 抽卡 / 卡包 / 卡池 / 欧非榜）。"""
+    """这条消息是不是免 @ 指令（西八四连 / 烧烤 / 运势 / 重抽 / 抽卡 / 卡包 / 卡池 / 欧榜 / 非榜）。"""
     t = (text or "").strip()
     return any(r.match(t) for r in FREE_CMDS)
 X8_LIKE_RE = re.compile(r"^操\s*([\d\s]*)$")                     # 「操」/「操2」/「操 1 3」
@@ -1469,7 +1469,7 @@ HELP_GROUP = (
     "· 重抽 —— 重新抽签（每人每天一次，第二次就明天再来）\n"
     "· 抽卡 —— 抽卡：一次两张、每天两张，maimai + Phigros 曲绘\n"
     "· 收藏 —— 卡包 [@人] [页]（自己的卡）　卡池 [等级] [@人] [页]（全池，抽到的亮）\n"
-    "· 欧非 —— 欧非榜（本群；私聊看全服）\n"
+    "· 欧非 —— 欧榜 / 非榜（本群；私聊看全服）\n"
     "· 西八 —— 随机西八 1-3　西八榜　西八赞榜（不用 @，也不用斜杠）\n"
     "· 烧烤 —— 随机烧烤 1-3（pjsk 漫画，不用 @）\n"
     "· 加图 —— 引用图片发 添加西八\n"
@@ -1490,7 +1490,7 @@ HELP_PRIVATE = (
     "· 运势 —— 今日运势：分数 + 洋快餐 + 今日曲（斜杠可以不打）\n"
     "· 重抽 —— 重新抽签：每人每天一次，第二次就明天再来\n"
     "· 抽卡 —— 抽卡：一次两张、每天两张\n"
-    "· 收藏 —— 卡包 [@人] [页]　卡池 [等级] [@人] [页]　欧非榜（本群）\n"
+    "· 收藏 —— 卡包 [@人] [页]　卡池 [等级] [@人] [页]　欧榜 / 非榜（本群）\n"
     "· 西八 —— 随机西八 1-3　西八榜　西八赞榜（没有斜杠也认）\n"
     "· 烧烤 —— 随机烧烤 1-3（pjsk 简体中文漫画）\n"
     "· 加图 —— 引用图片发 添加西八\n"
@@ -2288,9 +2288,13 @@ async def _probe_group_members(gid: str, qqs: list[str]) -> int:
 
 
 async def do_luck_rank(qq: str, text: str, message_type: str, target: int) -> bool:
-    """欧非榜 —— 群里只统计本群的人，私聊看全服。头像版 TOP 10，无名不计。"""
-    if not LUCK_RE.match(text.strip()) or gacha_mod is None:
+    """欧榜 / 非榜 —— 群里只统计本群的人，私聊看全服。前 10 / 倒 10，无名不计。"""
+    lm = LUCK_RE.match(text.strip())
+    if not lm or gacha_mod is None:
         return False
+    # 欧非榜 当欧榜，其它按字面
+    word = (lm.group(1) or "欧榜").strip()
+    mode = "bottom" if word == "非榜" else "top"
     at = int(qq) if message_type == "group" else None
     gid = str(target) if message_type == "group" else None
 
@@ -2341,7 +2345,7 @@ async def do_luck_rank(qq: str, text: str, message_type: str, target: int) -> bo
         return True
 
     await asyncio.to_thread(gacha_mod.backfill_names, names)   # 顺手把昵称记进 gacha.json
-    png, msg = await asyncio.to_thread(gacha_mod.render_luck_board, rows, names, 10, scope)
+    png, msg = await asyncio.to_thread(gacha_mod.render_luck_board, rows, names, 10, scope, mode)
     if png:
         await BOT.send_image(message_type, target, png)
     else:
@@ -2350,7 +2354,7 @@ async def do_luck_rank(qq: str, text: str, message_type: str, target: int) -> bo
         await BOT.send_text(message_type, target,
                             "协议端没给群成员名单，现在只能统计在这个群说过话的人。",
                             at_qq=at)
-    log.info("[欧非榜] %s %s → %s %d 人（seed %d）", message_type, qq, scope, len(rows), seeded)
+    log.info("[%s] %s %s → %s %d 人（seed %d）", word, message_type, qq, scope, len(rows), seeded)
     return True
 
 
