@@ -849,6 +849,10 @@ async def handle_group(evt: dict[str, Any]) -> None:
     if await handle_zan(qq, text, "group", int(gid)):
         return
 
+    # 连续 3 条一样的就复读（不 @ 也算）
+    if await handle_repeat(qq, text, gid):
+        return
+
     # 「操」点赞：不 @ 也算，必须引用一条 /随机西八 的消息
     if await handle_xiba_like(qq, text, "group", int(gid), evt.get("message")):
         return
@@ -1434,6 +1438,12 @@ BAG_RE = re.compile(r"^/?卡包\s*(\d+)?\s*$", re.I)    # 自己的收藏
 POOL_RE = re.compile(r"^/?卡池\s*([A-Za-z]+)?\s*(\d+)?\s*$", re.I)   # 卡池 [等级] [页数]
 LUCK_RE = re.compile(r"^/?([欧非]榜|欧非榜)\s*$", re.I)   # 欧榜 / 非榜（欧非榜 = 欧榜）
 ZAN_RE = re.compile(r"凿")                        # 话里带「凿」就出表情包
+
+# 复读：同一个群里连续 3 条一模一样的话，贝尔跟着复读一次
+REPEAT: dict[str, deque] = defaultdict(lambda: deque(maxlen=8))
+REPEAT_N = 3                                     # 连续几条算复读
+_REPEAT_LAST: dict[str, float] = {}              # 群 -> 上次复读时间（防连环）
+REPEAT_GAP = 20.0                                # 同群 20 秒内只复读一次
 ZAN_FILE = BASE_DIR / "assets" / "凿.gif"
 _ZAN_LAST: dict[str, float] = {}                 # 每人 3 秒内只发一次，防刷屏
 MEMBERS_MD_RE = re.compile(r"^/?群名单\s*$", re.I)   # 手写/刷新 群成员.md
@@ -2857,6 +2867,38 @@ async def do_xiba_rank(qq: str, text: str, message_type: str, target: int) -> bo
         await BOT.send_text(message_type, target,
                             xiba_mod.text_of(rows, total_files, total_picks), at_qq=at)
     log.info("[西八榜] %s %s → 前 %d（共 %d 张 / %d 次）", message_type, qq, len(rows), total_files, total_picks)
+    return True
+
+
+async def handle_repeat(qq: str, text: str, gid: str) -> bool:
+    """群里连续 3 条一模一样的话（不管是不是同一个人），跟着复读一次。"""
+    t = (text or "").strip()
+    if not t or t.startswith("/"):
+        return False
+    if ZAN_RE.search(t):            # 「凿」有自己的反应，不参与复读
+        return False
+    if len(t) > 60:                 # 太长的整段不跟
+        return False
+
+    q = REPEAT[gid]
+    q.append(t)
+    if len(q) < REPEAT_N:
+        return False
+    tail = list(q)[-REPEAT_N:]
+    if len(set(tail)) != 1:         # 最后 N 条不是同一句
+        return False
+
+    now = time.time()
+    if now - _REPEAT_LAST.get(gid, 0) < REPEAT_GAP:
+        return False                # 刚跟过一次，歇会儿
+    _REPEAT_LAST[gid] = now
+    q.clear()
+
+    try:
+        await BOT.send_text("group", int(gid), tail[0])
+        log.info("[复读] 群 %s 跟了一句：%s", gid, tail[0][:30])
+    except Exception as exc:
+        log.warning("[复读] 发送失败：%s", exc)
     return True
 
 
