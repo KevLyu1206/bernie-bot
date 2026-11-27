@@ -1433,7 +1433,7 @@ GACHA_RE = re.compile(r"^/?抽卡\s*$", re.I)   # 曲绘抽卡，每人每天 3 
 BAG_RE = re.compile(r"^/?卡包\s*(\d+)?\s*$", re.I)    # 自己的收藏
 POOL_RE = re.compile(r"^/?卡池\s*([A-Za-z]+)?\s*(\d+)?\s*$", re.I)   # 卡池 [等级] [页数]
 LUCK_RE = re.compile(r"^/?([欧非]榜|欧非榜)\s*$", re.I)   # 欧榜 / 非榜（欧非榜 = 欧榜）
-ZAN_RE = re.compile(r"^凿+$")                    # 单发一个「凿」就出表情包
+ZAN_RE = re.compile(r"凿")                        # 话里带「凿」就出表情包
 ZAN_FILE = BASE_DIR / "assets" / "凿.gif"
 _ZAN_LAST: dict[str, float] = {}                 # 每人 3 秒内只发一次，防刷屏
 MEMBERS_MD_RE = re.compile(r"^/?群名单\s*$", re.I)   # 手写/刷新 群成员.md
@@ -2862,7 +2862,7 @@ async def do_xiba_rank(qq: str, text: str, message_type: str, target: int) -> bo
 
 async def handle_zan(qq: str, text: str, message_type: str, target: int) -> bool:
     """群里谁发一个「凿」，就甩那张举牌子的表情包。不 @ 也算，不吃冷却和额度。"""
-    if not ZAN_RE.match((text or "").strip()):
+    if not ZAN_RE.search((text or "").strip()):
         return False
     if not ZAN_FILE.exists():
         return False
