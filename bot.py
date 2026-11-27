@@ -757,6 +757,19 @@ class OneBot:
         mid = data.get("message_id")
         return str(mid) if mid is not None else None
 
+    async def send_file_image(self, message_type: str, target: int, path: Path,
+                              caption: str = "") -> None:
+        """发本地图片路径。大文件（gif 之类）走这条，不经 base64，不会撞 WS 上限。"""
+        segs: list[dict[str, Any]] = []
+        if caption:
+            segs.append({"type": "text", "data": {"text": caption}})
+        uri = path.resolve().as_uri()          # file:///C:/...
+        segs.append({"type": "image", "data": {"file": uri}})
+        if message_type == "group":
+            await self.call("send_group_msg", {"group_id": target, "message": segs})
+        else:
+            await self.call("send_private_msg", {"user_id": target, "message": segs})
+
     async def send_image(self, message_type: str, target: int, png: bytes, caption: str = "") -> None:
         segs: list[dict[str, Any]] = []
         if caption:
@@ -831,6 +844,10 @@ async def handle_group(evt: dict[str, Any]) -> None:
 
     STORE.groups[gid].append(f"{name}：{text}"[:120])
     STORE.touch_member(gid, qq)
+
+    # 谁发一个「凿」就甩举牌表情包：不 @ 也算，不吃冷却和额度
+    if await handle_zan(qq, text, "group", int(gid)):
+        return
 
     # 「操」点赞：不 @ 也算，必须引用一条 /随机西八 的消息
     if await handle_xiba_like(qq, text, "group", int(gid), evt.get("message")):
@@ -1067,6 +1084,9 @@ async def handle_private(evt: dict[str, Any]) -> None:
         return
 
     # 「操」点赞：私聊引用同样有效，放在冷却之前，别被吞
+    if await handle_zan(qq, text, "private", int(qq)):
+        return
+
     if await handle_xiba_like(qq, text, "private", int(qq), evt.get("message")):
         return
 
@@ -1413,6 +1433,9 @@ GACHA_RE = re.compile(r"^/?抽卡\s*$", re.I)   # 曲绘抽卡，每人每天 3 
 BAG_RE = re.compile(r"^/?卡包\s*(\d+)?\s*$", re.I)    # 自己的收藏
 POOL_RE = re.compile(r"^/?卡池\s*([A-Za-z]+)?\s*(\d+)?\s*$", re.I)   # 卡池 [等级] [页数]
 LUCK_RE = re.compile(r"^/?([欧非]榜|欧非榜)\s*$", re.I)   # 欧榜 / 非榜（欧非榜 = 欧榜）
+ZAN_RE = re.compile(r"^凿+$")                    # 单发一个「凿」就出表情包
+ZAN_FILE = BASE_DIR / "assets" / "凿.gif"
+_ZAN_LAST: dict[str, float] = {}                 # 每人 3 秒内只发一次，防刷屏
 MEMBERS_MD_RE = re.compile(r"^/?群名单\s*$", re.I)   # 手写/刷新 群成员.md
 RANDOM_SONG_RE = re.compile(r"^/随一首\s*(\S*)\s*$", re.I)
 DS_TABLE_RE = re.compile(r"^/定数表\s*(\S*)(?:\s+(\d+))?\s*$", re.I)
@@ -1425,7 +1448,7 @@ PJSK_RE = re.compile(r"^/?随机烧烤\s*(\d+)?\s*$", re.I)   # 随机烧烤 [1-
 # 免 @ 的一组：西八四连 + 随机烧烤 + 今日运势 + 重新抽签。
 # 群里直接发就触发，斜杠可有可无（老的带斜杠写法照样认）
 FREE_CMDS = (X8_RE, ADD_X8_RE, X8_RANK_RE, X8_LIKE_RANK_RE, PJSK_RE, FORTUNE_RE,
-             FORTUNE_REROLL_RE, GACHA_RE, BAG_RE, POOL_RE, LUCK_RE)
+             FORTUNE_REROLL_RE, GACHA_RE, BAG_RE, POOL_RE, LUCK_RE, ZAN_RE)
 
 
 def is_free_cmd(text: str) -> bool:
@@ -2834,6 +2857,23 @@ async def do_xiba_rank(qq: str, text: str, message_type: str, target: int) -> bo
         await BOT.send_text(message_type, target,
                             xiba_mod.text_of(rows, total_files, total_picks), at_qq=at)
     log.info("[西八榜] %s %s → 前 %d（共 %d 张 / %d 次）", message_type, qq, len(rows), total_files, total_picks)
+    return True
+
+
+async def handle_zan(qq: str, text: str, message_type: str, target: int) -> bool:
+    """群里谁发一个「凿」，就甩那张举牌子的表情包。不 @ 也算，不吃冷却和额度。"""
+    if not ZAN_RE.match((text or "").strip()):
+        return False
+    if not ZAN_FILE.exists():
+        return False
+    now = time.time()
+    if now - _ZAN_LAST.get(qq, 0) < 3:
+        return True                                  # 3 秒内同一人不重复发
+    _ZAN_LAST[qq] = now
+    try:
+        await BOT.send_file_image(message_type, target, ZAN_FILE)
+    except Exception as exc:
+        log.warning("[凿] 发图失败：%s", exc)
     return True
 
 
