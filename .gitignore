@@ -1,28 +1,30 @@
-# 本地配置（含 API key、QQ 号），绝对不要提交
+# 本地配置（含 API key、QQ 号）
 config.json
-
-# 运行时数据
 state.json
 state.json.tmp
 *.log
-
-# 曲绘缓存
 covers/
-
-# B50 生成物
 b50_*.png
-
-# Python
+memory/
 __pycache__/
 *.py[cod]
-.venv/
-venv/
-
-# 协议端本体（体积大，且不是本项目的一部分）
 LuckyLillia-Desktop-win-x64/
+fortune_*.png
+*_preview.png
+*_preview.jpg
+cache/
+群成员.md
+西八/
+*_test_card.jpg
+pjsk/
+phigros/
+gacha.json
+gacha.json.tmp
+gacha.json.bak
+gacha.json.*.testbak
+state_test.json
+state_test.json.bak
+state.json.bak
 
-# 编辑器
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db
+# 项目记忆（含本机路径和 QQ 号）
+AGENTS.md

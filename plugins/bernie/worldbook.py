@@ -5,16 +5,19 @@ import json
 from pathlib import Path
 from typing import Any
 
-CARD_PATH = Path(__file__).resolve().parents[2] / "贝尔娜提塔·冯·瓦立.json"
+from . import persona
 
 _book: dict[str, Any] | None = None
+_book_path: Path | None = None
 
 
 def _entries() -> list[dict[str, Any]]:
-    global _book
-    if _book is None:
-        card = json.loads(CARD_PATH.read_text(encoding="utf-8"))
+    global _book, _book_path
+    path = persona.CARD_PATH
+    if _book is None or _book_path != path:
+        card = json.loads(path.read_text(encoding="utf-8"))
         _book = card["data"]["character_book"]
+        _book_path = path
     rows = [e for e in _book["entries"] if e.get("enabled", True)]
     rows.sort(key=lambda e: -int(e.get("insertion_order", 0)))
     return rows

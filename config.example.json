@@ -9,27 +9,93 @@
     "api_key": "",
     "model": "deepseek-chat",
     "temperature": 1.15,
-    "max_tokens": 700
+    "max_tokens": 1200
+  },
+  "vision": {
+    "enable": true,
+    "base_url": "https://api.openai.com/v1",
+    "api_key": "",
+    "model": "gpt-4o-mini",
+    "max_side": 1024,
+    "timeout": 45,
+    "backend": "auto"
   },
   "card": "贝尔娜提塔·冯·瓦立.json",
   "master_ids": [
     123456789
   ],
+  "master_name": "主人",
   "group": {
-    "at_only": false,
-    "trigger_keywords": ["贝尔", "贝尔娜提塔", "Bernie", "柏妮"],
+    "at_only": true,
+    "trigger_keywords": [
+      "贝尔",
+      "贝尔娜提塔",
+      "Bernie",
+      "柏妮"
+    ],
     "random_reply_prob": 0.06,
     "cooldown_seconds": 20,
     "history_limit": 12,
-    "reply_with_at": false
+    "reply_with_at": false,
+    "master_cooldown_seconds": 0,
+    "user_cooldown_seconds": 30,
+    "chat_enabled": false
   },
   "private": {
-    "cooldown_seconds": 3,
-    "history_limit": 20
+    "cooldown_seconds": 5,
+    "history_limit": 20,
+    "master_cooldown_seconds": 0
   },
   "style": {
     "max_chars_group": 140,
     "max_chars_private": 900,
-    "strip_markdown": true
+    "strip_markdown": true,
+    "max_chars_per_message": 45,
+    "max_chars_per_message_adult": 160,
+    "max_chars_private_adult": 600
+  },
+  "reply_delay": {
+    "master": 10,
+    "user": 30
+  },
+  "maimai": {
+    "enable": true,
+    "token": "",
+    "password": "",
+    "user_map": {},
+    "lxns_key": "",
+    "lxns_friend_code": "",
+    "theme": "light",
+    "oauth_client_id": "",
+    "oauth_client_secret": ""
+  },
+  "budget": {
+    "enabled": true,
+    "global_daily_cny": 8.0,
+    "user_daily_cny": 2.0,
+    "prompt_price_per_m": 2.0,
+    "cache_hit_price_per_m": 0.5,
+    "completion_price_per_m": 8.0,
+    "exhausted_reply": "明天再来吧"
+  },
+  "memory": {
+    "summarize_master_every": 80,
+    "summarize_user_every": 30,
+    "keep_summaries": 12
+  },
+  "friend": {
+    "auto_accept": true,
+    "auto_accept_group_invite": false,
+    "initial_stage": 2
+  },
+  "bot_uin": 3678328823,
+  "menu5c": {
+    "master_only": true,
+    "per_meal": 6,
+    "cache_minutes": 20,
+    "push_time": "08:00"
+  },
+  "xiba": {
+    "only_master": false
   }
 }

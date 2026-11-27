@@ -138,8 +138,21 @@ async def main() -> None:
                 print(f"  {who}: {m['content'][:80]}")
             print()
             continue
+        if head in ("/今日运势", "/运势"):
+            if getattr(bot, "fortune_mod", None) is None:
+                print("（fortune.py 没加载上，检查 Pillow / covers 目录）")
+                continue
+            res = bot.fortune_mod.draw(qq)
+            print(bot.fortune_mod.text_of(res))
+            png = bot.fortune_mod.render_card(res)
+            if png:
+                out = bot.BASE_DIR / f"fortune_{qq}.png"
+                out.write_bytes(png)
+                print(f"（图卡已存到 {out.name}，{len(png)//1024} KB）")
+            print()
+            continue
         if head in ("/help", "/?"):
-            print("  /group  /private  /as <qq> [昵称]  /stage  /set n  /who  /history  /quit")
+            print("  /group  /private  /as <qq> [昵称]  /stage  /set n  /who  /history  /今日运势  /quit")
             continue
 
         ctx = "群聊" if surface == "group" else "私聊"
@@ -152,7 +165,7 @@ async def main() -> None:
             continue
 
         reply, delta = bot.clean_reply(reply, ctx)
-        parts = bot.split_replies(reply, ctx)
+        parts = bot.split_replies(reply, ctx, int(u["stage"]))
 
         u["stage"] = max(1, min(5, int(u["stage"]) + delta))
         u["history"].append({"role": "user", "content": shown})
