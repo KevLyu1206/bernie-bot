@@ -2884,6 +2884,8 @@ async def handle_repeat(qq: str, text: str, gid: str,
         return False
     if ZAN_RE.search(t):            # 「凿」有自己的反应，不参与复读
         return False
+    if is_free_cmd(t):              # 指令不参与复读（否则「抽卡」连发 3 次会被复读吃掉）
+        return False
     if len(t) > 60:                 # 太长的整段不跟
         return False
 
