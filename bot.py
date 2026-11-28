@@ -610,6 +610,7 @@ def parse_message(segs: list[dict[str, Any]] | None, self_id: str) -> tuple[str,
     joined = re.sub(r"[ \t]+", " ", "".join(text)).strip()
     return joined, at_me, others
 
+
 # ---------------------------------------------------------------- OneBot
 
 class OneBot:
@@ -850,7 +851,7 @@ async def handle_group(evt: dict[str, Any]) -> None:
         return
 
     # 连续 3 条一样的就复读（不 @ 也算）
-    if await handle_repeat(qq, text, gid):
+    if await handle_repeat(qq, text, gid, evt.get("message")):
         return
 
     # 「操」点赞：不 @ 也算，必须引用一条 /随机西八 的消息
@@ -2870,8 +2871,14 @@ async def do_xiba_rank(qq: str, text: str, message_type: str, target: int) -> bo
     return True
 
 
-async def handle_repeat(qq: str, text: str, gid: str) -> bool:
-    """群里连续 3 条一模一样的话（不管是不是同一个人），跟着复读一次。"""
+async def handle_repeat(qq: str, text: str, gid: str,
+                        segs: list[dict[str, Any]] | None = None) -> bool:
+    """群里连续 3 条一模一样的**文字**（不管是不是同一个人），跟着复读一次。
+    图片不参与：图片消息既不进队列，也不会被复读。"""
+    # 带图的消息直接跳过
+    if any((x.get("type") == "image") for x in (segs or [])):
+        return False
+
     t = (text or "").strip()
     if not t or t.startswith("/"):
         return False
